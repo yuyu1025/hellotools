@@ -1,0 +1,26 @@
+{
+  "name": "hellotools",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "ASTRO_TELEMETRY_DISABLED=1 astro dev",
+    "build": "ASTRO_TELEMETRY_DISABLED=1 astro build",
+    "check": "ASTRO_TELEMETRY_DISABLED=1 astro check",
+    "preview": "ASTRO_TELEMETRY_DISABLED=1 astro preview",
+    "data:crawl": "node scripts/crawl-hellogithub.mjs",
+    "data:collect": "node scripts/collect.mjs",
+    "data:categorize": "node scripts/categorize.mjs",
+    "data:enrich": "node scripts/enrich-github.mjs",
+    "data:build": "node scripts/build-data.mjs",
+    "data": "npm run data:crawl && npm run data:collect && npm run data:categorize && npm run data:enrich && npm run data:build"
+  },
+  "dependencies": {
+    "@astrojs/sitemap": "^3.3.0",
+    "astro": "^5.7.13"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.4",
+    "typescript": "^5.8.3"
+  }
+}

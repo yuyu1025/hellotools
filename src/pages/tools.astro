@@ -1,0 +1,228 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { CATEGORY_IDS } from '../lib/categories.mjs';
+import { getMeta, categoryLabel } from '../lib/data';
+import { SITE_NAME } from '../lib/site';
+
+const meta = await getMeta();
+const categories = CATEGORY_IDS.filter((id) => (meta.byCategory[id] ?? 0) > 0).map((id) => ({
+  id,
+  label: categoryLabel(id),
+  count: meta.byCategory[id],
+}));
+
+const states = [
+  { id: 'live', label: '活跃' },
+  { id: 'busy', label: '繁忙' },
+  { id: 'dormant', label: '缓更' },
+  { id: 'stale', label: '停更' },
+  { id: 'archived', label: '已归档' },
+];
+---
+<BaseLayout
+  title={`全部工具 · ${SITE_NAME}`}
+  description={`按星数、活跃度、分类筛选 ${meta.total} 个开源工具与开发库，数据每日更新。`}
+  canonicalPath="/tools"
+>
+  <section class="hero">
+    <p class="eyebrow">全部条目</p>
+    <h1>全部 {meta.total} 个工具</h1>
+    <p class="lede">
+      输入名字、仓库地址或关键词即时过滤。分类可多选，状态用来排除停更项目。
+    </p>
+  </section>
+
+  <div class="filter-bar" id="filters">
+    <div class="filter-search">
+      <label class="visually-hidden" for="q">搜索</label>
+      <input id="q" type="search" placeholder="搜索名称、仓库、简介…" autocomplete="off" spellcheck="false" />
+    </div>
+
+    <div class="filter-group" id="state-group" aria-label="按维护状态筛选">
+      {states.map((s) => (
+        <button class="chip" type="button" data-state={s.id} aria-pressed="false">{s.label}</button>
+      ))}
+    </div>
+
+    <label class="visually-hidden" for="cat">分类</label>
+    <select class="filter-select" id="cat">
+      <option value="">全部分类</option>
+      {categories.map((c) => <option value={c.id}>{c.label}（{c.count}）</option>)}
+    </select>
+
+    <label class="visually-hidden" for="sort">排序</label>
+    <select class="filter-select" id="sort">
+      <option value="stars">按星数</option>
+      <option value="active">按最近提交</option>
+      <option value="new">按收录时间</option>
+      <option value="name">按名称</option>
+    </select>
+
+    <span class="result-count" id="count"></span>
+  </div>
+
+  <div id="results" class="tool-grid" style="margin-top: 1.25rem;"></div>
+  <p class="empty-note" id="empty" hidden>没有匹配的条目，换个关键词试试。</p>
+  <div class="more-row"><button class="button" id="more" type="button" hidden>显示更多</button></div>
+
+  <script>
+    interface IndexFile {
+      columns: string[];
+      rows: (string | number | null)[][];
+    }
+
+    const PAGE = 60;
+
+    const results = document.getElementById('results') as HTMLElement;
+    const emptyNote = document.getElementById('empty') as HTMLElement;
+    const countEl = document.getElementById('count') as HTMLElement;
+    const moreBtn = document.getElementById('more') as HTMLButtonElement;
+    const qInput = document.getElementById('q') as HTMLInputElement;
+    const catSelect = document.getElementById('cat') as HTMLSelectElement;
+    const sortSelect = document.getElementById('sort') as HTMLSelectElement;
+    const stateGroup = document.getElementById('state-group') as HTMLElement;
+
+    const STATE_LABEL: Record<string, string> = {
+      live: '活跃',
+      busy: '繁忙',
+      dormant: '缓更',
+      stale: '停更',
+      archived: '已归档',
+    };
+    const CAT_LABEL: Record<string, string> = {
+      devtools: '开发工具',
+      ai: '人工智能',
+      media: '影音图像',
+      network: '网络',
+      privacy: '隐私与自托管',
+      data: '数据',
+      productivity: '效率',
+      desktop: '桌面与系统',
+      sysops: '运维部署',
+      web: 'Web 应用',
+      hardware: '硬件与固件',
+      fun: '有趣无用',
+      library: '开发库',
+    };
+
+    let rows: (string | number | null)[][] = [];
+    let shown = PAGE;
+    const activeStates = new Set<string>();
+
+    function currentRows() {
+      const q = qInput.value.trim().toLowerCase();
+      const cat = catSelect.value;
+      let filtered = rows.filter((r) => {
+        if (cat && r[3] !== cat) return false;
+        if (activeStates.size && !activeStates.has(String(r[6]))) return false;
+        if (!q) return true;
+        return String(r[1]).toLowerCase().includes(q) || String(r[2]).toLowerCase().includes(q) || String(r[4]).toLowerCase().includes(q);
+      });
+
+      const sort = sortSelect.value;
+      if (sort === 'stars') filtered.sort((a, b) => Number(b[5]) - Number(a[5]));
+      else if (sort === 'active') filtered.sort((a, b) => String(b[8]).localeCompare(String(a[8])));
+      else if (sort === 'new') filtered.sort((a, b) => String(b[9]).localeCompare(String(a[9])));
+      else if (sort === 'name') filtered.sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'zh-Hans-CN'));
+      return filtered;
+    }
+
+    // 相对时间比绝对日期短，卡片底部那一行才排得下。
+    function relative(pushed: string): string {
+      const days = Math.floor((Date.now() - new Date(`${pushed}T00:00:00Z`).getTime()) / 86400000);
+      if (days <= 0) return '今天有提交';
+      if (days === 1) return '昨天有提交';
+      if (days < 30) return `${days} 天前提交`;
+      if (days < 365) return `${Math.round(days / 30)} 个月前提交`;
+      return `${(days / 365).toFixed(1)} 年前提交`;
+    }
+
+    function card(r: (string | number | null)[]) {
+      const [slug, name, repo, category, tagline, stars, state, language, pushed] = r;
+      const badge = `<span class="badge ${state}">${STATE_LABEL[String(state)] ?? state}</span>`;
+      const catBadge = `<span class="badge plain">${CAT_LABEL[String(category)] ?? category}</span>`;
+      const starsText = Number(stars) >= 10000
+        ? `${(Number(stars) / 10000).toFixed(1)} 万`
+        : Number(stars) >= 1000
+          ? `${(Number(stars) / 1000).toFixed(1)}k`
+          : String(stars);
+      const lang = language ? `<span>${language}</span>` : '';
+      return `<a class="tool-card" href="/t/${slug}">
+        <div class="tool-card-head">
+          <span class="tool-card-name">${name}</span>
+          <span class="tool-card-stars">★ ${starsText}</span>
+        </div>
+        <p class="tool-card-tagline">${tagline}</p>
+        <div class="tool-card-meta">${badge}${catBadge}${lang}${pushed ? `<span>· ${relative(String(pushed))}</span>` : ''}</div>
+      </a>`;
+    }
+
+    function render() {
+      const list = currentRows();
+      countEl.textContent = `${list.length} 个结果`;
+      emptyNote.hidden = list.length > 0;
+      results.innerHTML = list.slice(0, shown).map(card).join('');
+      moreBtn.hidden = list.length <= shown;
+      moreBtn.textContent = `显示更多（还有 ${list.length - shown} 个）`;
+    }
+
+    function syncUrl() {
+      const params = new URLSearchParams();
+      if (qInput.value.trim()) params.set('q', qInput.value.trim());
+      if (catSelect.value) params.set('cat', catSelect.value);
+      if (sortSelect.value !== 'stars') params.set('sort', sortSelect.value);
+      const qs = params.toString();
+      history.replaceState(null, '', qs ? `?${qs}` : location.pathname);
+    }
+
+    stateGroup.addEventListener('click', (event) => {
+      const btn = (event.target as HTMLElement).closest('button[data-state]') as HTMLButtonElement | null;
+      if (!btn) return;
+      const id = btn.dataset.state!;
+      if (activeStates.has(id)) activeStates.delete(id);
+      else activeStates.add(id);
+      btn.setAttribute('aria-pressed', String(activeStates.has(id)));
+      shown = PAGE;
+      render();
+    });
+
+    let timer: number | undefined;
+    qInput.addEventListener('input', () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        shown = PAGE;
+        render();
+        syncUrl();
+      }, 120);
+    });
+
+    catSelect.addEventListener('change', () => {
+      shown = PAGE;
+      render();
+      syncUrl();
+    });
+    sortSelect.addEventListener('change', () => {
+      shown = PAGE;
+      render();
+      syncUrl();
+    });
+    moreBtn.addEventListener('click', () => {
+      shown += PAGE;
+      render();
+    });
+
+    fetch('/index.json')
+      .then((res) => res.json() as Promise<IndexFile>)
+      .then((data) => {
+        rows = data.rows;
+        const params = new URLSearchParams(location.search);
+        if (params.get('q')) qInput.value = params.get('q')!;
+        if (params.get('cat')) catSelect.value = params.get('cat')!;
+        if (params.get('sort')) sortSelect.value = params.get('sort')!;
+        render();
+      })
+      .catch(() => {
+        countEl.textContent = '列表加载失败，请刷新重试';
+      });
+  </script>
+</BaseLayout>

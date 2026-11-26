@@ -1,0 +1,157 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ToolRow from '../../components/ToolRow.astro';
+import { getTools, rank, categoryLabel, byStars, stateLabel, stateHint } from '../../lib/data';
+import { SITE_NAME, SITE_NOUNS } from '../../lib/site';
+
+export async function getStaticPaths() {
+  const tools = await getTools();
+  return tools.map((tool) => ({ params: { slug: tool.slug }, props: { tool } }));
+}
+
+const { tool } = Astro.props;
+
+const noun = SITE_NOUNS[tool.category] ?? '开源工具';
+const catLabel = categoryLabel(tool.category);
+
+// 同类推荐：同分类先比排序分，其次按主题重合度。
+const pool = (await getTools()).filter((t) => t.slug !== tool.slug);
+const topics = new Set(tool.topics);
+const sameCat = pool
+  .filter((t) => t.category === tool.category)
+  .sort((a, b) => {
+    const overlap = (x: typeof a) => x.topics.filter((topic) => topics.has(topic)).length;
+    return overlap(b) - overlap(a) || rank(b) - rank(a);
+  })
+  .slice(0, 5);
+
+const alsoLike = pool
+  .filter((t) => t.category !== tool.category && t.topics.some((topic) => topics.has(topic)))
+  .sort(byStars)
+  .slice(0, 4);
+
+const pushed = tool.pushedAt.slice(0, 10);
+const created = tool.createdAt.slice(0, 10);
+---
+<BaseLayout
+  title={`${tool.name} · ${catLabel} · ${SITE_NAME}`}
+  description={`${tool.name}（${tool.fullName}）：${tool.tagline}`}
+  canonicalPath={`/t/${tool.slug}`}
+  jsonLd={{
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: tool.name,
+    description: tool.tagline,
+    url: `/t/${tool.slug}`,
+    applicationCategory: catLabel,
+    codeRepository: tool.url,
+    license: tool.license ?? undefined,
+    sameAs: tool.url,
+  }}
+>
+  <nav class="breadcrumb">
+    <a href="/">首页</a><span>/</span>
+    <a href={`/c/${tool.category}`}>{catLabel}</a><span>/</span>
+    <span>{tool.name}</span>
+  </nav>
+
+  <header class="detail-head">
+    <h1 class="detail-title">{tool.name}</h1>
+    <p class="detail-sub">{tool.fullName}</p>
+    <p class="detail-tagline">{tool.tagline}</p>
+
+    <div class="detail-actions">
+      <a class="button primary" href={tool.url} rel="noopener noreferrer" target="_blank">打开 GitHub 仓库</a>
+      {tool.homepage && <a class="button" href={tool.homepage} rel="noopener noreferrer" target="_blank">项目主页</a>}
+      <a class="button" href={`/c/${tool.category}`}>更多{catLabel}</a>
+    </div>
+  </header>
+
+  <div class="detail-body">
+    <div>
+      {tool.note && (
+        <div class="note-block">
+          <p style="margin:0">{tool.note}</p>
+        </div>
+      )}
+
+      <div class="prose" style="margin-top:1.5rem">
+        <h2>这是什么</h2>
+        <p>
+          {tool.name} 是一个{noun}，收录在「{catLabel}」分类下，仓库地址是 {tool.fullName}。
+        </p>
+        {tool.state === 'archived' && (
+          <p>
+            作者已把仓库设为只读（{pushed} 之后没再动过）。这类项目仍然可以下载使用，
+            如果它依赖的外部服务或协议已经变化，可能需要自己打补丁——把源码当成一份参考实现更实际。
+          </p>
+        )}
+        {tool.state === 'stale' && (
+          <p>
+            项目最后一次提交是 {pushed}，已经超过一年。功能本身通常还能用，
+            但在新系统上编译或部署时可能会遇到依赖过期的问题。
+          </p>
+        )}
+        {tool.state === 'dormant' && (
+          <p>项目半年内没有新提交，属于「写完就结束」的类型，成熟度一般不需要怀疑。</p>
+        )}
+        {(tool.state === 'live' || tool.state === 'busy') && (
+          <p>
+            仓库 {pushed} 还有提交，最近一次是 issue 数量 {tool.openIssues} 个
+            {tool.state === 'busy' ? '，看得出维护者有点忙' : '，issue 处理得比较及时'}。
+          </p>
+        )}
+
+        {tool.topics.length > 0 && (
+          <>
+            <h2>标签</h2>
+            <ul class="tag-row">
+              {tool.topics.map((topic) => <li class="tag">{topic}</li>)}
+            </ul>
+          </>
+        )}
+
+        <h2>收录信息</h2>
+        <p>
+          这条记录来自 HelloGitHub 第 {tool.volume} 期（{tool.firstSeen}），
+          仓库创建于 {created}。星数与提交时间由 GitHub API 每天拉取，不是人工填写的。
+        </p>
+      </div>
+
+      {sameCat.length > 0 && (
+        <section class="section" style="padding-top:2rem">
+          <div class="section-head">
+            <h2>同类推荐</h2>
+            <a class="more" href={`/c/${tool.category}`}>全部 {catLabel} →</a>
+          </div>
+          <div class="tool-list">
+            {sameCat.map((item) => <ToolRow tool={item} />)}
+          </div>
+        </section>
+      )}
+
+      {alsoLike.length > 0 && (
+        <section class="section">
+          <div class="section-head"><h2>标签相近的</h2></div>
+          <div class="tool-list">
+            {alsoLike.map((item) => <ToolRow tool={item} />)}
+          </div>
+        </section>
+      )}
+    </div>
+
+    <aside>
+      <dl class="fact-list">
+        <dt>星数</dt><dd>{tool.stars.toLocaleString('en-US')}</dd>
+        <dt>Fork</dt><dd>{tool.forks.toLocaleString('en-US')}</dd>
+        <dt>开放 issue</dt><dd>{tool.openIssues.toLocaleString('en-US')}</dd>
+        <dt>最近提交</dt><dd>{pushed}</dd>
+        <dt>许可证</dt><dd>{tool.license ?? '未标注'}</dd>
+        <dt>语言</dt><dd>{tool.language ?? '—'}</dd>
+        <dt>分类</dt><dd><a href={`/c/${tool.category}`}>{catLabel}</a></dd>
+        <dt>状态</dt><dd>{stateLabel(tool.state)}（{stateHint(tool.state)}）</dd>
+        <dt>收录</dt><dd>第 {tool.volume} 期 · {tool.firstSeen}</dd>
+      </dl>
+    </aside>
+  </div>
+</BaseLayout>

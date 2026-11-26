@@ -1,0 +1,20 @@
+---
+import type { ToolFacts } from '../lib/data';
+import { stateLabel } from '../lib/data';
+import { formatStars } from '../lib/format';
+
+interface Props {
+  tool: ToolFacts;
+}
+
+const { tool } = Astro.props;
+---
+<a class="tool-row" href={`/t/${tool.slug}`}>
+  <div class="tool-row-main">
+    <span class="tool-row-name">{tool.name}</span>
+    <span class="tool-row-repo">{tool.fullName}</span>
+    <div class="tool-row-tagline">{tool.tagline}</div>
+  </div>
+  <span class={`badge ${tool.state}`}>{stateLabel(tool.state)}</span>
+  <span class="tool-row-stars">★ {formatStars(tool.stars)}</span>
+</a>

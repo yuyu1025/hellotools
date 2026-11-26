@@ -1,0 +1,73 @@
+{
+  "neovim/neovim": {
+    "featured": true,
+    "tagline": "把 Vim 拆开重写了一遍：内置 LSP 与 Lua 配置，终端里的编辑器终于不用靠插件补丁拼出来。",
+    "note": "如果你只是为了「习惯 Vim 键位」，先别急着迁移——Lua 配置和工作流要重学一遍，收益是异步插件、内置 LSP 和更干净的启动。"
+  },
+  "junegunn/fzf": {
+    "featured": true,
+    "tagline": "命令行的模糊查找器，接上文件、历史命令、Git 分支其中任何一个，就再也离不开。",
+    "note": "典型用法是 shell 里一个快捷键接上 fzf：历史命令、文件、分支三处切换全在这一个工具上。"
+  },
+  "localsend/localsend": {
+    "featured": true,
+    "tagline": "同局域网内手机与电脑互传文件，走 AirDrop 那套体验，但不挑系统也不需要客户端账号。",
+    "note": "跨 Windows / macOS / Linux / 安卓 / iOS 传几十 G 的文件比网盘稳，前提是同一 Wi-Fi。"
+  },
+  "immich-app/immich": {
+    "featured": true,
+    "tagline": "自己搭的相册：手机自动备份、人脸与物体识别、按时间线浏览，界面几乎照着 Google Photos 做。",
+    "note": "自托管相册里少见的「真能用」的项目。要一块够大的硬盘和一颗还算闲的 CPU 跑机器学习任务。"
+  },
+  "ollama/ollama": {
+    "featured": true,
+    "tagline": "一条命令跑起本地大模型，模型仓库、量化权重和推理引擎都打包好了，还带 OpenAI 兼容接口。",
+    "note": "适合把模型塞进自己的脚本或插件里试水；真要压满显卡跑长上下文，还是得回到 llama.cpp 的参数层。"
+  },
+  "rustdesk/rustdesk": {
+    "featured": true,
+    "tagline": "开源的远程桌面，可以只用自己的中继服务器，不走第三方。",
+    "note": "自建服务端之后，远程协助、无人值守访问都能自己掌控，这条路 TeamViewer 和向日葵不会给你。"
+  },
+  "excalidraw/excalidraw": {
+    "featured": true,
+    "tagline": "手绘风格的白板，画架构图和流程图比拖拽工具快，还能开房间多人同时画。",
+    "note": "本地自建后没有文件数量限制；导出 SVG 直接贴进文档，风格统一。"
+  },
+  "hoppscotch/hoppscotch": {
+    "featured": true,
+    "tagline": "浏览器里的 Postman：接口调试、环境变量、团队协作空间都有，可以自建。",
+    "note": "Postman 强制登录之后最常见的替代品。轻量、支持 GraphQL 与 WebSocket，自建后数据在自己机器上。"
+  },
+  "jellyfin/jellyfin": {
+    "tagline": "自己搭的家庭影音服务器，刮削元数据、转码、多端播放，是 Emby 的开源分支。",
+    "note": "硬件转码要用对镜像和显卡驱动；手机端用 Findroid 之类的第三方客户端体验更完整。"
+  },
+  "dbeaver/dbeaver": {
+    "tagline": "一个客户端连所有数据库：MySQL、PostgreSQL、SQLite、Oracle、ClickHouse 都在同一个界面里。",
+    "note": "社区版免费，重但全能。比 DataGrip 差在 SQL 补全，比 Navicat 好在不挑数据库。"
+  },
+  "caddyserver/caddy": {
+    "tagline": "带自动 HTTPS 的 Web 服务器，配置文件能短到一行，证书续期不用再配 cron。",
+    "note": "做反向代理最省心的选择，跟 Nginx 比少了一整套证书运维。代价是生态和调优资料少一些。"
+  },
+  "nektos/act": {
+    "tagline": "在本地用 Docker 跑 GitHub Actions 工作流，改 YAML 不用反复 push 去试。",
+    "note": "以后台任务的形式模拟 runner，缓存和 secrets 都能本地注入，CI 调试时间能砍掉一大半。"
+  },
+  "tailwindlabs/tailwindcss": {
+    "tagline": "把样式写成类名的 CSS 框架，编译期只保留用到的规则，所以产物不会变大。",
+    "note": "不喜欢在 HTML 里堆类名的人永远不喜欢它；喜欢的人省掉的是给每个组件起名字的时间。"
+  },
+  "sharkdp/bat": {
+    "tagline": "cat 的替代品，带语法高亮、行号和 Git 改动标记，还能当 less 用。",
+    "note": "把它设成 $PAGER 之后看配置文件和 diff 舒服很多。"
+  },
+  "jesseduffield/lazygit": {
+    "tagline": "终端里的 Git 界面：暂存、交互式 rebase、cherry-pick 都用快捷键完成。",
+    "note": "不适合拿来学 Git 原理，但熟练之后处理分支比敲命令快得多。"
+  },
+  "freeCodeCamp/freeCodeCamp": {
+    "drop": true
+  }
+}

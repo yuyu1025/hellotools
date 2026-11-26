@@ -1,0 +1,12 @@
+---
+import { formatStars } from '../lib/format';
+
+interface Props {
+  stars: number;
+}
+
+const { stars } = Astro.props;
+---
+<span class="tool-card-stars" title={`${stars.toLocaleString('en-US')} stars`}>
+  ★ {formatStars(stars)}
+</span>

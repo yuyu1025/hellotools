@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://hellotools.distinctive.fun/sitemap-index.xml
+Sitemap: https://hellotools.distinctive.fun/sitemap.xml

@@ -1,0 +1,70 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ToolRow from '../../components/ToolRow.astro';
+import { CATEGORY_IDS } from '../../lib/categories.mjs';
+import { getMeta, getTools, categoryLabel, categoryBlurb, byStars, byRecent } from '../../lib/data';
+import { SITE_NAME } from '../../lib/site';
+
+export async function getStaticPaths() {
+  const meta = await getMeta();
+  return CATEGORY_IDS.filter((id) => (meta.byCategory[id] ?? 0) > 0).map((id) => ({
+    params: { category: id },
+    props: { id },
+  }));
+}
+
+const { id } = Astro.props as { id: string };
+const tools = await getTools();
+const list = tools.filter((t) => t.category === id).sort(byStars);
+const label = categoryLabel(id);
+const blurb = categoryBlurb(id);
+
+const live = list.filter((t) => t.state === 'live' || t.state === 'busy').length;
+const fresh = [...list].sort(byRecent).slice(0, 5);
+const languages = new Map<string, number>();
+for (const tool of list) {
+  if (tool.language) languages.set(tool.language, (languages.get(tool.language) ?? 0) + 1);
+}
+const topLanguages = [...languages.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+---
+<BaseLayout
+  title={`${label} · ${SITE_NAME}`}
+  description={`${blurb} 收录 ${list.length} 个「${label}」类开源项目，其中 ${live} 个仍在维护。`}
+  canonicalPath={`/c/${id}`}
+>
+  <nav class="breadcrumb">
+    <a href="/">首页</a><span>/</span><a href="/categories">分类</a><span>/</span><span>{label}</span>
+  </nav>
+
+  <section class="hero">
+    <p class="eyebrow">分类</p>
+    <h1>{label}</h1>
+    <p class="lede">{blurb}</p>
+    <ul class="stat-row">
+      <li><span class="stat-value">{list.length}</span><span class="stat-label">个条目</span></li>
+      <li><span class="stat-value">{live}</span><span class="stat-label">仍在维护</span></li>
+      {topLanguages.map(([lang, count]) => (
+        <li><span class="stat-value">{count}</span><span class="stat-label">{lang}</span></li>
+      ))}
+    </ul>
+  </section>
+
+  {fresh.length > 0 && (
+    <section class="section">
+      <div class="section-head"><h2>这类里最近还在提交的</h2></div>
+      <div class="tool-list">
+        {fresh.map((tool) => <ToolRow tool={tool} />)}
+      </div>
+    </section>
+  )}
+
+  <section class="section">
+    <div class="section-head">
+      <h2>全部 {list.length} 个</h2>
+      <span class="faint" style="font-size:0.82rem">按星数排序</span>
+    </div>
+    <div class="tool-list">
+      {list.map((tool) => <ToolRow tool={tool} />)}
+    </div>
+  </section>
+</BaseLayout>

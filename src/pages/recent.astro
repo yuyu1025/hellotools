@@ -1,0 +1,54 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ToolRow from '../components/ToolRow.astro';
+import { getTools, byFirstSeen, categoryLabel } from '../lib/data';
+import { formatMonth } from '../lib/format';
+import { SITE_NAME } from '../lib/site';
+
+// 按 HelloGitHub 的期号分组，一期通常对应一个月：这是「我们什么时候发现它」的时间线，
+// 和仓库自己的提交时间不是一回事。
+const tools = [...(await getTools())].sort(byFirstSeen);
+
+const volumes = new Map<number, typeof tools>();
+for (const tool of tools) {
+  const bucket = volumes.get(tool.volume) ?? [];
+  bucket.push(tool);
+  volumes.set(tool.volume, bucket);
+}
+
+const groups = [...volumes.entries()]
+  .sort((a, b) => b[0] - a[0])
+  .slice(0, 18)
+  .map(([volume, items]) => ({
+    volume,
+    month: formatMonth(items[0].firstSeen),
+    items,
+  }));
+---
+<BaseLayout
+  title={`新收录 · ${SITE_NAME}`}
+  description="最近收录的开源工具，按发现时间倒序排列，看得到这个库在增长。"
+  canonicalPath="/recent"
+>
+  <section class="hero">
+    <p class="eyebrow">时间线</p>
+    <h1>最近收录</h1>
+    <p class="lede">
+      按我们第一次发现它的时间倒序。同一期的项目一起出现，所以你会看到成批的更新。
+    </p>
+  </section>
+
+  {groups.map((group) => (
+    <section class="section" id={`v${group.volume}`}>
+      <div class="section-head">
+        <h2>{group.month}</h2>
+        <span class="faint" style="font-size:0.82rem">第 {group.volume} 期 · {group.items.length} 个</span>
+      </div>
+      <div class="tool-list">
+        {group.items
+          .sort((a, b) => b.stars - a.stars)
+          .map((tool) => <ToolRow tool={tool} />)}
+      </div>
+    </section>
+  ))}
+</BaseLayout>

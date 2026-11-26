@@ -1,0 +1,12 @@
+---
+import type { ToolFacts } from '../lib/data';
+import { stateLabel } from '../lib/data';
+import { stateHint } from '../lib/data';
+
+interface Props {
+  state: ToolFacts['state'];
+}
+
+const { state } = Astro.props;
+---
+<span class={`badge ${state}`} title={stateHint(state)}>{stateLabel(state)}</span>

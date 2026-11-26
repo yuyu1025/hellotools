@@ -1,0 +1,60 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getTools, groupedByCategory, byStars, categoryLabel } from '../lib/data';
+import { SITE_NAME } from '../lib/site';
+
+const groups = await groupedByCategory();
+const tools = await getTools();
+const total = tools.length;
+
+// 每个分类挑三个代表，让索引页本身有信息量，而不是纯链接列表。
+const samples = new Map(
+  groups.map((group) => [group.id, [...group.tools].sort(byStars).slice(0, 3)]),
+);
+---
+<BaseLayout
+  title={`分类 · ${SITE_NAME}`}
+  description={`${total} 个开源工具按 ${groups.length} 类用途归档：开发、AI、影音、网络、隐私、数据、效率、运维、硬件与纯粹好玩。`}
+  canonicalPath="/categories"
+>
+  <section class="hero">
+    <p class="eyebrow">分类</p>
+    <h1>{groups.length} 类用途</h1>
+    <p class="lede">
+      分类只回答一个问题：你想解决什么事。一个项目只进一类，宁可归到「开发工具」也不重复收录。
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="category-grid" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));">
+      {groups.map((group) => (
+        <a class="category-tile" href={`/c/${group.id}`} style="min-height: 0;">
+          <div class="category-tile-head">
+            <span class="category-tile-name">{group.label}</span>
+            <span class="category-tile-count">{group.tools.length}</span>
+          </div>
+          <span class="category-tile-blurb">{group.blurb}</span>
+          <ul class="tag-row" style="margin-top: 0.5rem;">
+            {(samples.get(group.id) ?? []).map((tool) => (
+              <li class="tag">{tool.name}</li>
+            ))}
+          </ul>
+        </a>
+      ))}
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h2>分类原则</h2></div>
+    <div class="prose">
+      <p>
+        判断标准是「默认使用场景」，不是技术栈：一个用 Electron 写的数据库客户端归「数据」而不是「桌面」；
+        一个自建的论坛归「Web 应用」而不是「效率」。开发库单独成类，因为它们不该和能安装的软件混在一起。
+      </p>
+      <p class="faint">
+        分类来自人工标注，遇到明显放错的项目欢迎在
+        <a href="https://github.com/yuyu1025/hellotools/issues">仓库提 issue</a>。
+      </p>
+    </div>
+  </section>
+</BaseLayout>

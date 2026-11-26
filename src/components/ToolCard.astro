@@ -1,0 +1,26 @@
+---
+import type { ToolFacts } from '../lib/data';
+import { daysSincePush, stateLabel } from '../lib/data';
+import { formatStars, relativeDays } from '../lib/format';
+
+interface Props {
+  tool: ToolFacts;
+  categoryLabel?: string;
+}
+
+const { tool, categoryLabel } = Astro.props;
+const days = daysSincePush(tool);
+---
+<a class="tool-card" href={`/t/${tool.slug}`}>
+  <div class="tool-card-head">
+    <span class="tool-card-name">{tool.name}</span>
+    <span class="tool-card-stars" title={`${tool.stars.toLocaleString('en-US')} stars`}>★ {formatStars(tool.stars)}</span>
+  </div>
+  <p class="tool-card-tagline">{tool.tagline}</p>
+  <div class="tool-card-meta">
+    <span class={`badge ${tool.state}`}>{stateLabel(tool.state)}</span>
+    {categoryLabel && <span class="badge plain">{categoryLabel}</span>}
+    {tool.language && <span>{tool.language}</span>}
+    <span>· {relativeDays(days)}更新</span>
+  </div>
+</a>

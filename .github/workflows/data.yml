@@ -1,0 +1,51 @@
+name: Refresh data
+
+on:
+  schedule:
+    - cron: '17 3 * * *'   # 03:17 UTC daily
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: data-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Stars, licences and push dates move every day; the crawl itself hits
+      # HelloGitHub once per month page, so only pick up new volumes.
+      - name: Pull GitHub facts
+        run: |
+          node scripts/crawl-hellogithub.mjs
+          node scripts/collect.mjs
+          node scripts/categorize.mjs
+          node scripts/enrich-github.mjs
+          node scripts/build-data.mjs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit if changed
+        run: |
+          if [ -z "$(git status --porcelain data work/volumes)" ]; then
+            echo "no data changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data work/volumes
+          git commit -m "chore(data): refresh GitHub facts"
+          git push

@@ -1,0 +1,31 @@
+---
+interface Props {
+  title: string;
+  url: string;
+  source: string;
+  time?: string;
+  summary?: string;
+  showSource?: boolean;
+}
+
+const { title, url, source, time, summary, showSource = true } = Astro.props;
+---
+<li class="news-row">
+  <div class="news-row-grid">
+    <span class="news-time mono">{time ?? '--:--'}</span>
+    <div class="news-body">
+      <div class="news-title">
+        <a href={url} target="_blank" rel="noopener">
+          {title}<span class="ext-arrow" aria-hidden="true">&#8599;</span>
+        </a>
+        {showSource && (
+          <>
+            {' '}
+            <span class="source-badge">{source}</span>
+          </>
+        )}
+      </div>
+      {summary && <p class="news-summary">{summary}</p>}
+    </div>
+  </div>
+</li>

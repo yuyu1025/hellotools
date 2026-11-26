@@ -1,0 +1,77 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getMeta } from '../lib/data';
+import { SITE_NAME, SITE_URL, REPO_URL, DATA_SOURCE } from '../lib/site';
+import { CATEGORY_IDS } from '../lib/categories.mjs';
+
+const meta = await getMeta();
+---
+<BaseLayout
+  title={`关于 · ${SITE_NAME}`}
+  description="这个站是什么、数据从哪来、为什么标维护状态，以及怎么提意见。"
+  canonicalPath="/about"
+>
+  <section class="hero">
+    <p class="eyebrow">关于</p>
+    <h1>一个不追热度的工具库</h1>
+    <p class="lede">
+      现在推荐开源工具的地方已经够多了。这个站想做的只有一件事：把「这个还能用吗」讲清楚。
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="prose">
+      <h2>数据从哪来</h2>
+      <p>
+        条目来自 <a href={DATA_SOURCE} target="_blank" rel="noopener noreferrer">HelloGitHub</a>
+        历年月刊的推荐——那是国内做得最久的开源项目月刊，编辑已经做了 100 多期人工筛选。
+        我们把它每期推荐的仓库全部抓下来，去掉非软件类（书籍、清单、教程、模型权重）后，
+        剩 {meta.total} 个，再按用途分类。
+      </p>
+      <p>
+        星数、Fork、开放 issue、最近提交时间、许可证、主要语言都来自 GitHub API，
+        每天由 GitHub Actions 重新拉取一次，不存在手工填写或过期的数字。
+        页面上的「状态」就是由这些原始数据算出来的：
+      </p>
+      <ul>
+        <li><strong>活跃</strong>：一年内有提交，且开放 issue 不超过 400 个。</li>
+        <li><strong>繁忙</strong>：仍在维护，但 issue 堆积超过 400 个。</li>
+        <li><strong>缓更</strong>：半年到一年没有新提交。</li>
+        <li><strong>停更</strong>：超过一年没有新提交。</li>
+        <li><strong>已归档</strong>：作者把仓库设为只读。</li>
+      </ul>
+
+      <h2>为什么标「停更」</h2>
+      <p>
+        很多好工具写完了就该结束了，一年不更新不代表它坏了。但也有一些项目停在某个平台版本上，
+        你在新系统里装不上。这两种情况从外面看一模一样，所以这里不做判断，只把事实标出来，
+        由你决定——{meta.byState.stale + meta.byState.archived} 个停更或归档的项目没有被删掉，
+        就是这个原因。
+      </p>
+
+      <h2>分类只有 {CATEGORY_IDS.length} 类</h2>
+      <p>
+        分类回答的是「你想解决什么事」，不是「它用什么写的」。一个 Electron 套壳的数据库客户端
+        归「数据」，不归「桌面」。项目只进一类，不重复收录，宁可粗暴一点也不做交叉。
+      </p>
+
+      <h2>怎么纠错</h2>
+      <p>
+        分类是人工标注的，标签也难免有过时的。发现放错分类、简介失真、或者项目已经变成另一个东西，
+        去 <a href={`${REPO_URL}/issues`} target="_blank" rel="noopener noreferrer">仓库提 issue</a>
+        最直接。站点是纯静态的，构建脚本和数据都在仓库里，
+        <a href={REPO_URL} target="_blank" rel="noopener noreferrer">源码</a>可以随意镜像。
+      </p>
+
+      <h2>广告</h2>
+      <p>
+        站内的赞助位只有一个，放在列表页底部，会和正文明确分隔并标注「赞助」。
+        不接受和工具内容混排的软文，也不做什么「推荐位竞价」。
+      </p>
+
+      <p class="faint" style="margin-top:2rem">
+        最近一次数据更新：{meta.updatedAt.slice(0, 10)} · 共 {meta.total} 个条目 · 站点地址 {SITE_URL}
+      </p>
+    </div>
+  </section>
+</BaseLayout>
