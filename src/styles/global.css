@@ -920,3 +920,36 @@ select.filter-select {
     scroll-behavior: auto !important;
   }
 }
+
+/* 赞助位：和正文同宽但明显分隔，只用一条虚线和「赞助」标签，不伪装成内容卡片。 */
+.sponsor {
+  display: flex;
+  gap: 0.9rem;
+  align-items: flex-start;
+  margin-top: 2.5rem;
+  padding-top: 1.1rem;
+  border-top: 1px dashed var(--border);
+}
+
+.sponsor-label {
+  flex: none;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.15rem 0.35rem;
+  text-transform: uppercase;
+}
+
+.sponsor-body p {
+  margin: 0.25rem 0 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.sponsor-title {
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  font-weight: 600;
+}

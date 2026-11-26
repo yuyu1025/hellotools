@@ -60,3 +60,7 @@ export const SITE_NOUNS: Record<string, string> = {
   fun: '纯粹好玩的项目',
   library: '开发库',
 };
+
+// 列表页底部的赞助位。null 表示目前没有广告主；填上之后 Sponsor.astro 才会渲染，
+// 并且始终与正文分隔、明确标注「赞助」——不做与内容混排的原生广告。
+export const SPONSOR: { title: string; blurb: string; href: string } | null = null;

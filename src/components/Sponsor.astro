@@ -1,0 +1,13 @@
+---
+import { SPONSOR } from '../lib/site';
+---
+
+{SPONSOR && (
+  <aside class="sponsor" aria-label="赞助">
+    <span class="sponsor-label">赞助</span>
+    <div class="sponsor-body">
+      <a class="sponsor-title" href={SPONSOR.href} rel="nofollow sponsored noopener" target="_blank">{SPONSOR.title}</a>
+      <p>{SPONSOR.blurb}</p>
+    </div>
+  </aside>
+)}
