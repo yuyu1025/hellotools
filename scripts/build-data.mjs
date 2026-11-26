@@ -33,6 +33,7 @@ const cleanText = (text) =>
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1') // markdown links -> label
     .replace(/[（(](?:英文|中文)[^）)]*[）)]/g, '')
     .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/`([^`]*)`/g, '$1') // inline code -> plain text
     .replace(/\s+/g, ' ')
     .trim();
 
@@ -46,10 +47,15 @@ function firstSentence(text) {
   return match.trim();
 }
 
-function taglineFrom(description, descriptionEn) {
-  const zh = firstSentence(description);
+function taglineFrom(description, descriptionEn, repoDescription) {
+  // HelloGitHub prefixes some entries with issue-editorial noise ("新！") that
+  // means nothing once the blurb stands alone.
+  const zh = firstSentence(description).replace(/^(新！|新增[：:]?|本期推荐[：:]?|推荐[：:]?)\s*/, '');
   const en = firstSentence(descriptionEn).replace(/^This (project|tool|repository) is /i, '');
-  const source = zh || en;
+  // A six-character blurb is a label, not a description; the GitHub repo
+  // description is usually a better sentence than nothing.
+  const fallback = cleanText(repoDescription);
+  const source = zh.length >= 6 ? zh : en || fallback || zh;
   if (source.length <= 110) return source;
   const cut = source.slice(0, 110);
   const boundary = Math.max(cut.lastIndexOf('，'), cut.lastIndexOf('。'), cut.lastIndexOf(' '));
@@ -85,7 +91,7 @@ async function main() {
       url: tool.url,
       homepage: facts.homepage || null,
       category,
-      tagline: own.tagline || taglineFrom(tool.description, tool.descriptionEn),
+      tagline: own.tagline || taglineFrom(tool.description, tool.descriptionEn, tool.facts?.description),
       note: own.note || null,
       featured: own.featured === true,
       verified: state.verified?.includes(tool.full_name) === true,

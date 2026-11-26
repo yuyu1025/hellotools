@@ -403,7 +403,7 @@ p {
 
 .category-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(232px, 100%), 1fr));
   gap: 0.75rem;
 }
 
@@ -452,7 +452,9 @@ p {
 
 .tool-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  /* min() keeps a single column from overflowing a narrow phone: the card's
+     intrinsic width is whatever the longest repo name needs. */
+  grid-template-columns: repeat(auto-fill, minmax(min(310px, 100%), 1fr));
   gap: 1rem;
 }
 
@@ -479,12 +481,14 @@ p {
   align-items: baseline;
   gap: 0.5rem;
   justify-content: space-between;
+  min-width: 0;
 }
 
 .tool-card-name {
   font-family: var(--font-serif);
   font-size: 1.02rem;
   font-weight: 600;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -125,6 +125,8 @@ async function main() {
         language: facts.language,
         homepage: facts.homepage,
         topics: facts.topics,
+        // Last-resort blurb when HelloGitHub's paragraph is unusable.
+        description: facts.description,
       },
     });
   }
