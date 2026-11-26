@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Merge work/tools.json (HelloGitHub + GitHub facts) with the editorial side
+// Merge work/items.json (HelloGitHub, rebuilt from the monthly issues) with
+// data/facts.json (live GitHub numbers, committed) and the editorial side
 // (data/editorial.json, data/state.json) into the single file the site reads:
 // data/tools.json.
 //
@@ -62,22 +63,36 @@ function taglineFrom(description, descriptionEn, repoDescription) {
   return `${(boundary > 70 ? cut.slice(0, boundary) : cut).replace(/[,，;；:：]$/, '')}…`;
 }
 
-// Guard against publishing a half-empty directory: a rate-limited enrichment
-// run produces a plausible-looking work/tools.json with a few hundred entries,
-// and silently shipping that would gut the site.
+// Guard against publishing a half-empty directory: a broken crawl or a facts
+// file that lost most of its entries should fail loudly instead of quietly
+// gutting the site.
 const MAX_SHRINK = 0.05;
 
 async function main() {
-  const tools = await readJson('work/tools.json', null);
-  if (!tools) throw new Error('work/tools.json missing; run scripts/enrich-github.mjs');
+  const items = await readJson('work/items.json', null);
+  if (!items) throw new Error('work/items.json missing; run scripts/collect.mjs');
+  const factsStore = await readJson('data/facts.json', null);
+  if (!factsStore) throw new Error('data/facts.json missing; run scripts/enrich-github.mjs');
+  const facts = factsStore.repos ?? {};
+
+  // Repos that 404'd or were disabled are dropped from the site entirely.
+  const known = items
+    .filter((i) => i.kind === 'tool' || i.kind === 'library')
+    .filter((i) => {
+      const f = facts[i.full_name];
+      return f && !f.gone;
+    });
+  const missing = items.filter((i) => i.kind === 'tool' || i.kind === 'library').length - known.length;
+  if (missing) console.log(`${missing} repo(s) dropped: gone or never fetched`);
+
   const published = await readJson('data/tools.json', null);
   if (published && !process.env.ALLOW_SHRINK) {
     const floor = Math.floor(published.length * (1 - MAX_SHRINK));
-    if (tools.length < floor) {
+    if (known.length < floor) {
       throw new Error(
-        `work/tools.json has ${tools.length} entries but data/ already has ${published.length}; ` +
-          'enrichment probably aborted (rate limit?). Re-run scripts/enrich-github.mjs, ' +
-          'or set ALLOW_SHRINK=1 if the drop is intentional.',
+        `only ${known.length} entries survive collection but data/ already has ${published.length}; ` +
+          'the crawl or the facts sweep probably aborted. Re-run scripts/collect.mjs and ' +
+          'scripts/enrich-github.mjs, or set ALLOW_SHRINK=1 if the drop is intentional.',
       );
     }
   }
@@ -86,7 +101,7 @@ async function main() {
 
   const errors = [];
   const seen = new Map();
-  const curated = tools.filter((t) => editorial[t.full_name]?.drop !== true);
+  const curated = known.filter((t) => editorial[t.full_name]?.drop !== true);
 
   const out = curated.map((tool) => {
     // The repo name alone collides (many repos are called "server" or "cli"),
@@ -96,33 +111,34 @@ async function main() {
     seen.set(slug, tool.full_name);
 
     const own = editorial[tool.full_name] ?? {};
-    const facts = tool.facts;
+    const fact = facts[tool.full_name];
     const category = tool.kind === 'library' ? 'library' : tool.category;
     if (!CATEGORY_IDS.includes(category)) errors.push(`${tool.full_name}: bad category "${category}"`);
+    if (!fact.pushedAt) errors.push(`${tool.full_name}: no push date in data/facts.json`);
 
     return {
       slug,
       fullName: tool.full_name,
       name: own.name || tool.name,
       url: tool.url,
-      homepage: facts.homepage || null,
+      homepage: fact.homepage || null,
       category,
-      tagline: own.tagline || taglineFrom(tool.description, tool.descriptionEn, tool.facts?.description),
+      tagline: own.tagline || taglineFrom(tool.description, tool.descriptionEn, fact.description),
       note: own.note || null,
       featured: own.featured === true,
       verified: state.verified?.includes(tool.full_name) === true,
       source: 'hellogithub',
       firstSeen: tool.publishedAt,
       volume: tool.volume,
-      language: facts.language,
-      topics: facts.topics.slice(0, 6),
-      stars: facts.stars,
-      forks: facts.forks,
-      openIssues: facts.openIssues,
-      pushedAt: facts.pushedAt,
-      createdAt: facts.createdAt,
-      license: facts.license,
-      state: maintenanceState(facts),
+      language: fact.language,
+      topics: (fact.topics ?? []).slice(0, 6),
+      stars: fact.stars,
+      forks: fact.forks,
+      openIssues: fact.openIssues,
+      pushedAt: fact.pushedAt,
+      createdAt: fact.createdAt,
+      license: fact.license,
+      state: maintenanceState(fact),
     };
   });
 

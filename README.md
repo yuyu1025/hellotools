@@ -23,31 +23,38 @@ work/volumes/v*.json
    ▼
 work/items.json ──┬─ data/labels.json       每个项目的 kind（人工标注，已提交）
                   └─ data/category-map.json 每个 tool 的分类（人工标注，已提交）
-   │  scripts/enrich-github.mjs         逐个仓库调 GitHub API（缓存 12h）
+   │  scripts/enrich-github.mjs         条件请求刷新 stargazers/issues/pushed_at
    ▼
-work/tools.json
+data/facts.json（已提交）
    │  scripts/build-data.mjs            合并 data/editorial.json 与 data/state.json
    ▼
 data/tools.json + data/meta.json        ← 站点唯一的数据源
 ```
 
-所有中间产物都在 `work/`（已 gitignore），`data/` 下的标注文件是人工资产，
-重新跑流水线不会覆盖它们。
+`work/` 是中间产物（已 gitignore）；`data/` 下的 `labels.json`、`category-map.json`、
+`facts.json` 和标注文件都是提交进仓库的资产，重跑流水线不会覆盖人工标注。
+
+### 为什么 stars 刷新能塞进 rate limit
+
+GitHub Actions 的 `GITHUB_TOKEN` 每小时每个仓库只有 1000 次请求，而这里有 3400 多个仓库。
+`enrich-github.mjs` 靠两件事跑得通：每次请求带上次的 `ETag`（没变化就是 `304`，GitHub 不把它计入
+配额），以及一个硬预算（`ENRICH_BUDGET`，默认 850 次计费请求），按 `checkedAt` 最旧的先刷，
+所以被预算截断时也是轮流覆盖，不会永远饿死尾部。
 
 ### 命令
 
 ```bash
 npm install
-npm run data        # 全量重跑：抓月刊 → 平铺 → 校验分类 → 抓 GitHub → 合并
+npm run data        # 全量重跑：抓月刊 → 平铺 → 校验分类 → 刷新 facts → 合并
 npm run dev         # 本地开发 http://localhost:4321
 npm run build       # 产出 dist/
 npm run check       # astro check
 ```
 
 `npm run data` 需要 GitHub token：`GH_TOKEN`、`GITHUB_TOKEN`，或者本机已登录的 `gh auth token`。
-未认证的 API 限额 60 次/小时，跑不完 3400 个仓库。如果中途撞上限额，`enrich-github.mjs` 会以非零码退出、
-`build-data.mjs` 会拒绝用残缺数据覆盖 `data/tools.json`（条目数缩水超过 5% 就报错，确属有意删减时用
-`ALLOW_SHRINK=1`）。已经抓到的仓库留在 `work/github/` 缓存里，窗口重置后重跑即可接着走。
+首次运行要抓满 3400 多个仓库，未认证的 60 次/小时肯定不够；有 token 时按上面说的预算分几天补齐，
+之后每天都是条件请求。`build-data.mjs` 会拒绝用残缺数据覆盖 `data/tools.json`（条目数缩水超过 5%
+就报错，确属有意删减时用 `ALLOW_SHRINK=1`）。
 
 ### 人工标注在哪
 
@@ -57,6 +64,7 @@ npm run check       # astro check
 | `data/category-map.json` | 每个 tool 的 13 类归属 | 同上 |
 | `data/editorial.json` | 精选标记、手写一句话简介与编辑手记、`drop: true` 下架 | 手写 |
 | `data/state.json` | `verified`：作者亲自试过能用的项目 | 手写 |
+| `data/facts.json` | 每个仓库的 stars/forks/issue/最近提交/许可证/ETag | 脚本刷新，勿手改 |
 
 `data/editorial.json` 的键是 GitHub 的 `owner/repo`，字段可只写一部分：
 

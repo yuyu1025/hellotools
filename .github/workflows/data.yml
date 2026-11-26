@@ -37,6 +37,9 @@ jobs:
           node scripts/build-data.mjs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GITHUB_TOKEN gets 1,000 requests/hour per repo; the sweep spends this
+          # many charged requests per run and picks up where it left off.
+          ENRICH_BUDGET: '850'
 
       - name: Commit if changed
         run: |

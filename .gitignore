@@ -3,7 +3,7 @@ dist/
 .astro/
 .DS_Store
 
-# GitHub API response cache (rewritten on every data run)
+# legacy per-repo API cache, superseded by data/facts.json
 work/github/
 
 # intermediate pipeline output, reproducible from data/ + work/volumes/

@@ -1,19 +1,32 @@
 #!/usr/bin/env node
-// Enrich every tool/library in work/items.json with live GitHub facts.
-// Requires GH_TOKEN (or a logged-in `gh auth token`) — 2500+ repos on the
-// unauthenticated API would hit the 60 req/h ceiling.
+// Refresh the live GitHub facts for every tool/library in work/items.json.
 //
-// Cache: work/github/<owner>__<repo>.json, refreshed when older than
-// work/github/.meta.json's nextRefreshAt. Output: work/tools.json.
+// The result lives in data/facts.json and is committed: it is the only place
+// the site's stars / issues / push dates come from, and a fresh checkout has
+// nothing else to go on.
+//
+// Rate limits are the whole design constraint here. A GitHub Actions
+// GITHUB_TOKEN gets 1,000 requests per hour per repository, and we have ~3,400
+// repos, so a naive sweep cannot fit in one run. Two things make it fit:
+//
+//   1. Conditional requests. Every fetch carries the ETag from the previous
+//      run; unchanged repos answer 304, which GitHub does not charge against
+//      the rate limit. On a normal day almost nothing changed.
+//   2. A hard budget. Only charged responses (200 / 404) count, and the sweep
+//      stops at ENRICH_BUDGET (default 850) or when x-ratelimit-remaining runs
+//      low. Repos are visited oldest-checked first, so a truncated run still
+//      rotates through the whole catalogue instead of starving the tail.
+//
+// Requires GH_TOKEN, GITHUB_TOKEN, or a logged-in gh CLI.
 
-import { mkdir, readFile, writeFile, access } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
-import { join } from 'node:path';
 
-const TTL_HOURS = 12;
+const TTL_HOURS = Number(process.env.FACTS_TTL_HOURS ?? 20);
+const BUDGET = Number(process.env.ENRICH_BUDGET ?? 850);
+const REMAINING_FLOOR = Number(process.env.ENRICH_REMAINING_FLOOR ?? 60);
 const CONCURRENCY = Number(process.env.ENRICH_CONCURRENCY ?? 4);
-const DIR = 'work/github';
-const META = join(DIR, '.meta.json');
+const FACTS = 'data/facts.json';
 
 const token =
   process.env.GH_TOKEN ||
@@ -28,124 +41,134 @@ const token =
 
 if (!token) throw new Error('need GH_TOKEN, GITHUB_TOKEN, or a logged-in gh CLI');
 
-const now = Date.now();
-const readJson = async (p, fallback) => {
+const readJson = async (path, fallback) => {
   try {
-    return JSON.parse(await readFile(p, 'utf8'));
-  } catch {
-    return fallback;
+    return JSON.parse(await readFile(path, 'utf8'));
+  } catch (err) {
+    if (err.code === 'ENOENT') return fallback;
+    throw err;
   }
 };
 
-const cacheName = (fullName) => join(DIR, `${fullName.replace('/', '__')}.json`);
+const now = Date.now();
+const stale = (entry) =>
+  !entry || !entry.checkedAt || now - new Date(entry.checkedAt).getTime() > TTL_HOURS * 3600_000;
 
-async function fetchRepo(fullName) {
-  const path = cacheName(fullName);
-  const cached = await readJson(path, null);
-  if (cached && now - new Date(cached.fetchedAt).getTime() < TTL_HOURS * 3600_000) return cached;
-
-  const res = await fetch(`https://api.github.com/repos/${fullName}`, {
-    headers: {
-      authorization: `Bearer ${token}`,
-      accept: 'application/vnd.github+json',
-      'x-github-api-version': '2022-11-28',
-      'user-agent': 'hellotools-bot/1.0',
-    },
-  });
-
-  if (res.status === 404) {
-    const gone = { full_name: fullName, gone: true, fetchedAt: new Date().toISOString() };
-    await writeFile(path, JSON.stringify(gone));
-    return gone;
-  }
-  if (res.status === 403 || res.status === 429) {
-    const reset = Number(res.headers.get('x-ratelimit-reset') || 0) * 1000;
-    throw new Error(`rate limited on ${fullName}; resets ${new Date(reset || now + 60_000).toISOString()}`);
-  }
-  if (!res.ok) throw new Error(`${fullName}: HTTP ${res.status}`);
-
-  const r = await res.json();
-  const facts = {
-    full_name: fullName,
-    fetchedAt: new Date().toISOString(),
-    stars: r.stargazers_count,
-    forks: r.forks_count,
-    openIssues: r.open_issues_count,
-    pushedAt: r.pushed_at,
-    createdAt: r.created_at,
-    archived: r.archived,
-    disabled: r.disabled,
-    license: r.license?.spdx_id ?? null,
-    language: r.language ?? null,
-    homepage: r.homepage || null,
-    topics: r.topics ?? [],
-    description: r.description ?? null,
-    defaultBranch: r.default_branch,
-  };
-  await writeFile(path, JSON.stringify(facts));
-  return facts;
-}
+const factsOf = (r) => ({
+  stars: r.stargazers_count,
+  forks: r.forks_count,
+  openIssues: r.open_issues_count,
+  pushedAt: r.pushed_at,
+  createdAt: r.created_at,
+  archived: r.archived,
+  license: r.license?.spdx_id ?? null,
+  language: r.language ?? null,
+  homepage: r.homepage || null,
+  topics: r.topics ?? [],
+  description: r.description ?? null,
+});
 
 async function main() {
-  await mkdir(DIR, { recursive: true });
   const items = await readJson('work/items.json', null);
   if (!items) throw new Error('work/items.json missing; run scripts/collect.mjs');
+  const store = await readJson(FACTS, { updatedAt: null, repos: {} });
+  const repos = store.repos ?? {};
 
-  const pending = items.filter((i) => i.kind === 'tool' || i.kind === 'library');
+  const wanted = items
+    .filter((i) => i.kind === 'tool' || i.kind === 'library')
+    .map((i) => i.full_name);
+
+  // Oldest first, so a budget-capped run spreads the refresh evenly.
+  const queue = wanted
+    .filter((name) => stale(repos[name]))
+    .sort((a, b) => String(repos[a]?.checkedAt ?? '').localeCompare(String(repos[b]?.checkedAt ?? '')));
+
   let cursor = 0;
+  let charged = 0;
+  let remaining = Infinity;
+  let stop = null;
   const failures = [];
 
   const workers = Array.from({ length: CONCURRENCY }, async () => {
-    while (cursor < pending.length) {
-      const item = pending[cursor++];
+    while (cursor < queue.length) {
+      if (stop) return;
+      if (charged >= BUDGET) {
+        stop = 'budget';
+        return;
+      }
+      if (remaining < REMAINING_FLOOR) {
+        stop = 'remaining';
+        return;
+      }
+
+      const fullName = queue[cursor++];
+      const prev = repos[fullName];
+      const headers = {
+        authorization: `Bearer ${token}`,
+        accept: 'application/vnd.github+json',
+        'x-github-api-version': '2022-11-28',
+        'user-agent': 'hellotools-bot/1.0',
+      };
+      if (prev?.etag) headers['if-none-match'] = prev.etag;
+
       try {
-        await fetchRepo(item.full_name);
+        const res = await fetch(`https://api.github.com/repos/${fullName}`, { headers });
+        const left = Number(res.headers.get('x-ratelimit-remaining'));
+        if (Number.isFinite(left)) remaining = Math.min(remaining, left);
+
+        if (res.status === 304) {
+          repos[fullName] = { ...prev, checkedAt: new Date().toISOString() };
+          continue;
+        }
+        charged += 1;
+        // 404 deleted, 410 gone, 451 blocked (DMCA / legal takedown) — all of
+        // them mean the repo cannot be linked to any more.
+        if (res.status === 404 || res.status === 410 || res.status === 451) {
+          repos[fullName] = { gone: true, status: res.status, checkedAt: new Date().toISOString() };
+          continue;
+        }
+        if (res.status === 403 || res.status === 429) {
+          const reset = Number(res.headers.get('x-ratelimit-reset') || 0) * 1000;
+          throw new Error(
+            `rate limited on ${fullName}; resets ${new Date(reset || now + 60_000).toISOString()}`,
+          );
+        }
+        if (!res.ok) throw new Error(`${fullName}: HTTP ${res.status}`);
+
+        const r = await res.json();
+        repos[fullName] = {
+          ...factsOf(r),
+          etag: res.headers.get('etag') ?? null,
+          checkedAt: new Date().toISOString(),
+        };
       } catch (err) {
         failures.push(err.message);
-        if (/rate limited/.test(err.message)) cursor = pending.length;
+        if (/rate limited/.test(err.message)) stop = 'rate limited';
       }
     }
   });
   await Promise.all(workers);
 
-  const tools = [];
-  for (const item of pending) {
-    const facts = await readJson(cacheName(item.full_name), null);
-    if (!facts || facts.gone || facts.disabled) continue;
-    tools.push({
-      ...item,
-      facts: {
-        stars: facts.stars,
-        forks: facts.forks,
-        openIssues: facts.openIssues,
-        pushedAt: facts.pushedAt,
-        createdAt: facts.createdAt,
-        archived: facts.archived,
-        license: facts.license,
-        language: facts.language,
-        homepage: facts.homepage,
-        topics: facts.topics,
-        // Last-resort blurb when HelloGitHub's paragraph is unusable.
-        description: facts.description,
-      },
-    });
-  }
+  // Drop repos that left the catalogue (removed from HelloGitHub / editorial).
+  const keep = new Set(wanted);
+  for (const name of Object.keys(repos)) if (!keep.has(name)) delete repos[name];
 
-  await writeFile('work/tools.json', JSON.stringify(tools, null, 0));
   await writeFile(
-    META,
-    JSON.stringify({ refreshedAt: new Date().toISOString(), count: tools.length, pending: pending.length }),
+    FACTS,
+    `${JSON.stringify({ updatedAt: new Date().toISOString(), repos }, null, 0)}\n`,
   );
-  console.log(`enriched ${tools.length}/${pending.length} -> work/tools.json`);
+
+  const live = Object.values(repos).filter((r) => !r.gone).length;
+  console.log(
+    `facts: ${live} live / ${wanted.length} wanted, ${queue.length} due, ` +
+      `${charged} charged requests, stopped by ${stop ?? 'queue end'}`,
+  );
   if (failures.length) {
     console.error(`${failures.length} failure(s):\n  ${failures.slice(0, 10).join('\n  ')}`);
-    const rateLimited = failures.some((m) => /rate limited/.test(m));
-    if (rateLimited) {
-      console.error(
-        'aborted early on the API rate limit: work/tools.json is partial. ' +
-          'Wait for the window to reset and re-run; the cache keeps the repos already fetched.',
-      );
-    }
+    process.exitCode = 1;
+  } else if (stop !== 'budget' && queue.length > cursor) {
+    // Truncated without hitting the budget means something aborted the sweep.
+    console.error(`sweep stopped early (${stop}) with ${queue.length - cursor} repos unchecked`);
     process.exitCode = 1;
   }
 }
