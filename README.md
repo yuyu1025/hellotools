@@ -78,6 +78,12 @@ npm run check       # astro check
 }
 ```
 
+## 广告位
+
+`src/lib/site.ts` 里的 `SPONSOR` 是唯一的赞助位，默认 `null`（不渲染）。填上
+`{ title, blurb, href }` 之后会在「全部工具」列表底部出现一条带「赞助」标签、虚线与正文分隔的卡片，
+链接带 `rel="nofollow sponsored"`。不做与内容混排的原生广告。
+
 ## 部署
 
 静态站点，构建产物 `dist/` 由 GitHub Actions 推到 Cloudflare Pages
