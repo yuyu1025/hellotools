@@ -4,7 +4,9 @@ import sitemap from '@astrojs/sitemap';
 export default defineConfig({
   site: 'https://hellotools.distinctive.fun',
   output: 'static',
-  trailingSlash: 'never',
+  // Cloudflare Pages always serves /path/index.html at /path/ and 308-redirects
+  // the slashless form, so links have to match it or every click costs a hop.
+  trailingSlash: 'always',
   compressHTML: true,
   build: { format: 'directory' },
   integrations: [

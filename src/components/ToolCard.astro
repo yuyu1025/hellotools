@@ -11,7 +11,7 @@ interface Props {
 const { tool, categoryLabel } = Astro.props;
 const days = daysSincePush(tool);
 ---
-<a class="tool-card" href={`/t/${tool.slug}`}>
+<a class="tool-card" href={`/t/${tool.slug}/`}>
   <div class="tool-card-head">
     <span class="tool-card-name">{tool.name}</span>
     <span class="tool-card-stars" title={`${tool.stars.toLocaleString('en-US')} stars`}>★ {formatStars(tool.stars)}</span>

@@ -38,10 +38,10 @@ export const STATE_COPY = {
 };
 
 export const NAV = [
-  { href: '/tools', label: '全部工具' },
-  { href: '/categories', label: '分类' },
-  { href: '/recent', label: '新收录' },
-  { href: '/about', label: '关于' },
+  { href: '/tools/', label: '全部工具' },
+  { href: '/categories/', label: '分类' },
+  { href: '/recent/', label: '新收录' },
+  { href: '/about/', label: '关于' },
 ];
 
 // 「X 是一个 ___」用词，按分类给一个自然的名词。

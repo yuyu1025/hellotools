@@ -9,7 +9,7 @@ interface Props {
 
 const { tool } = Astro.props;
 ---
-<a class="tool-row" href={`/t/${tool.slug}`}>
+<a class="tool-row" href={`/t/${tool.slug}/`}>
   <div class="tool-row-main">
     <span class="tool-row-name">{tool.name}</span>
     <span class="tool-row-repo">{tool.fullName}</span>

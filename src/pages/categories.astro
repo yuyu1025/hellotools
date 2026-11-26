@@ -15,7 +15,7 @@ const samples = new Map(
 <BaseLayout
   title={`分类 · ${SITE_NAME}`}
   description={`${total} 个开源工具按 ${groups.length} 类用途归档：开发、AI、影音、网络、隐私、数据、效率、运维、硬件与纯粹好玩。`}
-  canonicalPath="/categories"
+  canonicalPath="/categories/"
 >
   <section class="hero">
     <p class="eyebrow">分类</p>
@@ -28,7 +28,7 @@ const samples = new Map(
   <section class="section">
     <div class="category-grid" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));">
       {groups.map((group) => (
-        <a class="category-tile" href={`/c/${group.id}`} style="min-height: 0;">
+        <a class="category-tile" href={`/c/${group.id}/`} style="min-height: 0;">
           <div class="category-tile-head">
             <span class="category-tile-name">{group.label}</span>
             <span class="category-tile-count">{group.tools.length}</span>

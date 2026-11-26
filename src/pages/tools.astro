@@ -22,7 +22,7 @@ const states = [
 <BaseLayout
   title={`全部工具 · ${SITE_NAME}`}
   description={`按星数、活跃度、分类筛选 ${meta.total} 个开源工具与开发库，数据每日更新。`}
-  canonicalPath="/tools"
+  canonicalPath="/tools/"
 >
   <section class="hero">
     <p class="eyebrow">全部条目</p>
@@ -147,7 +147,7 @@ const states = [
           ? `${(Number(stars) / 1000).toFixed(1)}k`
           : String(stars);
       const lang = language ? `<span>${language}</span>` : '';
-      return `<a class="tool-card" href="/t/${slug}">
+      return `<a class="tool-card" href="/t/${slug}/">
         <div class="tool-card-head">
           <span class="tool-card-name">${name}</span>
           <span class="tool-card-stars">★ ${starsText}</span>

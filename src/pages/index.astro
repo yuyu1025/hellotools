@@ -74,7 +74,7 @@ const jsonLd = {
   <section class="section">
     <div class="section-head">
       <h2>先看这几个</h2>
-      <a class="more" href="/tools">全部 {meta.total} 个 →</a>
+      <a class="more" href="/tools/">全部 {meta.total} 个 →</a>
     </div>
     <div class="tool-grid">
       {picks.map((tool) => <ToolCard tool={tool} categoryLabel={categoryLabel(tool.category)} />)}
@@ -84,11 +84,11 @@ const jsonLd = {
   <section class="section">
     <div class="section-head">
       <h2>按用途找</h2>
-      <a class="more" href="/categories">分类说明 →</a>
+      <a class="more" href="/categories/">分类说明 →</a>
     </div>
     <div class="category-grid">
       {groups.map((group) => (
-        <a class="category-tile" href={`/c/${group.id}`}>
+        <a class="category-tile" href={`/c/${group.id}/`}>
           <div class="category-tile-head">
             <span class="category-tile-name">{group.label}</span>
             <span class="category-tile-count">{group.tools.length}</span>
@@ -102,7 +102,7 @@ const jsonLd = {
   <section class="section">
     <div class="section-head">
       <h2>最近收录</h2>
-      <a class="more" href="/recent">按时间看全部 →</a>
+      <a class="more" href="/recent/">按时间看全部 →</a>
     </div>
     <div class="tool-list">
       {recentAdded.map((tool) => <ToolRow tool={tool} />)}
@@ -112,7 +112,7 @@ const jsonLd = {
   <section class="section">
     <div class="section-head">
       <h2>这两天还在提交的</h2>
-      <a class="more" href="/tools?sort=active">按活跃度排序 →</a>
+      <a class="more" href="/tools/?sort=active">按活跃度排序 →</a>
     </div>
     <div class="tool-list">
       {recentActive.map((tool) => <ToolRow tool={tool} />)}

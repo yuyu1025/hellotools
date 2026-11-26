@@ -36,13 +36,13 @@ const created = tool.createdAt.slice(0, 10);
 <BaseLayout
   title={`${tool.name} · ${catLabel} · ${SITE_NAME}`}
   description={`${tool.name}（${tool.fullName}）：${tool.tagline}`}
-  canonicalPath={`/t/${tool.slug}`}
+  canonicalPath={`/t/${tool.slug}/`}
   jsonLd={{
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
     name: tool.name,
     description: tool.tagline,
-    url: `/t/${tool.slug}`,
+    url: `/t/${tool.slug}/`,
     applicationCategory: catLabel,
     codeRepository: tool.url,
     license: tool.license ?? undefined,
@@ -51,7 +51,7 @@ const created = tool.createdAt.slice(0, 10);
 >
   <nav class="breadcrumb">
     <a href="/">首页</a><span>/</span>
-    <a href={`/c/${tool.category}`}>{catLabel}</a><span>/</span>
+    <a href={`/c/${tool.category}/`}>{catLabel}</a><span>/</span>
     <span>{tool.name}</span>
   </nav>
 
@@ -63,7 +63,7 @@ const created = tool.createdAt.slice(0, 10);
     <div class="detail-actions">
       <a class="button primary" href={tool.url} rel="noopener noreferrer" target="_blank">打开 GitHub 仓库</a>
       {tool.homepage && <a class="button" href={tool.homepage} rel="noopener noreferrer" target="_blank">项目主页</a>}
-      <a class="button" href={`/c/${tool.category}`}>更多{catLabel}</a>
+      <a class="button" href={`/c/${tool.category}/`}>更多{catLabel}</a>
     </div>
   </header>
 
@@ -122,7 +122,7 @@ const created = tool.createdAt.slice(0, 10);
         <section class="section" style="padding-top:2rem">
           <div class="section-head">
             <h2>同类推荐</h2>
-            <a class="more" href={`/c/${tool.category}`}>全部 {catLabel} →</a>
+            <a class="more" href={`/c/${tool.category}/`}>全部 {catLabel} →</a>
           </div>
           <div class="tool-list">
             {sameCat.map((item) => <ToolRow tool={item} />)}
@@ -148,7 +148,7 @@ const created = tool.createdAt.slice(0, 10);
         <dt>最近提交</dt><dd>{pushed}</dd>
         <dt>许可证</dt><dd>{tool.license ?? '未标注'}</dd>
         <dt>语言</dt><dd>{tool.language ?? '—'}</dd>
-        <dt>分类</dt><dd><a href={`/c/${tool.category}`}>{catLabel}</a></dd>
+        <dt>分类</dt><dd><a href={`/c/${tool.category}/`}>{catLabel}</a></dd>
         <dt>状态</dt><dd>{stateLabel(tool.state)}（{stateHint(tool.state)}）</dd>
         <dt>收录</dt><dd>第 {tool.volume} 期 · {tool.firstSeen}</dd>
       </dl>

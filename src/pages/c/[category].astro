@@ -30,7 +30,7 @@ const topLanguages = [...languages.entries()].sort((a, b) => b[1] - a[1]).slice(
 <BaseLayout
   title={`${label} · ${SITE_NAME}`}
   description={`${blurb} 收录 ${list.length} 个「${label}」类开源项目，其中 ${live} 个仍在维护。`}
-  canonicalPath={`/c/${id}`}
+  canonicalPath={`/c/${id}/`}
 >
   <nav class="breadcrumb">
     <a href="/">首页</a><span>/</span><a href="/categories">分类</a><span>/</span><span>{label}</span>

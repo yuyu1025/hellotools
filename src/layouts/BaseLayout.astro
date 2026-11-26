@@ -14,7 +14,12 @@ interface Props {
 
 const { title, description, canonicalPath = Astro.url.pathname, noindex = false, jsonLd } = Astro.props;
 
-const canonical = new URL(canonicalPath.replace(/\/+$/, '') || '/', SITE_URL).toString();
+// Pages serves every page at a trailing slash and 308-redirects the short
+// form, so the canonical URL has to carry the slash too.
+const canonical = new URL(
+  canonicalPath === '/' ? '/' : `${canonicalPath.replace(/\/+$/, '')}/`,
+  SITE_URL,
+).toString();
 const fullTitle = title.includes(SITE_NAME) ? title : `${title} · ${SITE_NAME}`;
 ---
 <!doctype html>
