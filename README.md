@@ -45,7 +45,9 @@ npm run check       # astro check
 ```
 
 `npm run data` 需要 GitHub token：`GH_TOKEN`、`GITHUB_TOKEN`，或者本机已登录的 `gh auth token`。
-未认证的 API 限额 60 次/小时，跑不完 3400 个仓库。
+未认证的 API 限额 60 次/小时，跑不完 3400 个仓库。如果中途撞上限额，`enrich-github.mjs` 会以非零码退出、
+`build-data.mjs` 会拒绝用残缺数据覆盖 `data/tools.json`（条目数缩水超过 5% 就报错，确属有意删减时用
+`ALLOW_SHRINK=1`）。已经抓到的仓库留在 `work/github/` 缓存里，窗口重置后重跑即可接着走。
 
 ### 人工标注在哪
 

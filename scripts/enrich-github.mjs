@@ -139,6 +139,13 @@ async function main() {
   console.log(`enriched ${tools.length}/${pending.length} -> work/tools.json`);
   if (failures.length) {
     console.error(`${failures.length} failure(s):\n  ${failures.slice(0, 10).join('\n  ')}`);
+    const rateLimited = failures.some((m) => /rate limited/.test(m));
+    if (rateLimited) {
+      console.error(
+        'aborted early on the API rate limit: work/tools.json is partial. ' +
+          'Wait for the window to reset and re-run; the cache keeps the repos already fetched.',
+      );
+    }
     process.exitCode = 1;
   }
 }

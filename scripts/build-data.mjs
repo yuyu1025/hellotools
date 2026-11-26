@@ -62,9 +62,25 @@ function taglineFrom(description, descriptionEn, repoDescription) {
   return `${(boundary > 70 ? cut.slice(0, boundary) : cut).replace(/[,，;；:：]$/, '')}…`;
 }
 
+// Guard against publishing a half-empty directory: a rate-limited enrichment
+// run produces a plausible-looking work/tools.json with a few hundred entries,
+// and silently shipping that would gut the site.
+const MAX_SHRINK = 0.05;
+
 async function main() {
   const tools = await readJson('work/tools.json', null);
   if (!tools) throw new Error('work/tools.json missing; run scripts/enrich-github.mjs');
+  const published = await readJson('data/tools.json', null);
+  if (published && !process.env.ALLOW_SHRINK) {
+    const floor = Math.floor(published.length * (1 - MAX_SHRINK));
+    if (tools.length < floor) {
+      throw new Error(
+        `work/tools.json has ${tools.length} entries but data/ already has ${published.length}; ` +
+          'enrichment probably aborted (rate limit?). Re-run scripts/enrich-github.mjs, ' +
+          'or set ALLOW_SHRINK=1 if the drop is intentional.',
+      );
+    }
+  }
   const editorial = await readJson('data/editorial.json', {});
   const state = await readJson('data/state.json', { verified: [] });
 
